@@ -4,6 +4,8 @@ Robustness testing and regularization experiments (M2).
 
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 from typing import Dict, List, Tuple
 from sklearn.model_selection import train_test_split, cross_val_score
@@ -130,7 +132,7 @@ class RobustnessEvaluator:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             print(f"Plot saved to {save_path}")
         
-        plt.show()
+        plt.close()
 
 
 class RegularizationExperiments:
@@ -230,7 +232,7 @@ class RegularizationExperiments:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             print(f"Plot saved to {save_path}")
         
-        plt.show()
+        plt.close()
 
 
 if __name__ == "__main__":

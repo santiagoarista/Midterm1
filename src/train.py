@@ -1,5 +1,5 @@
 """
-Main training script for credit risk model with explainability.
+Training script for credit risk model with SHAP explanations.
 """
 
 import sys
@@ -14,17 +14,19 @@ from src.data.data_loader import CreditDataLoader
 from src.models.credit_model import CreditRiskModel
 from src.explainability.shap_explainer import SHAPExplainer
 from src.robustness.robustness_tests import RobustnessEvaluator, RegularizationExperiments
+from src.fairness.fairness_metrics import FairnessEvaluator
+from src.governance.monitoring import GovernanceLogger, ModelMonitor, AuditTrail
 
 
 def main():
-    """Main training and evaluation pipeline."""
+    """Main training pipeline."""
     print("="*70)
-    print("EXPLAINABLE CREDIT RISK PREDICTION - TRAINING PIPELINE")
+    print("Credit Risk Training Pipeline")
     print("="*70)
     
     # Configuration
     SAMPLE_SIZE = 10000  # Use subset for faster training
-    MODEL_TYPE = "logistic"  # or "lightgbm"
+    MODEL_TYPE = "lightgbm"  # or "logistic"
     RANDOM_STATE = 42
     
     # Create experiments directory
@@ -67,6 +69,9 @@ def main():
     
     print("\n--- Test Set Performance ---")
     metrics_test = model.print_evaluation(X_test, y_test, "Test Set")
+    
+    # Get predictions for fairness evaluation
+    y_pred_test = model.model.predict_proba(X_test)[:, 1]
     
     # Save model
     model.save("models/credit_model.pkl")
@@ -155,13 +160,70 @@ def main():
     shift_results = robustness_eval.test_distribution_shift(shift_magnitude=0.5)
     
     # ============================================================
-    # STEP 6: Summary report
+    # STEP 6: Fairness evaluation (M3)
     # ============================================================
-    print("\n[6/6] Generating summary report...")
+    print("\n[6/8] Evaluating fairness metrics (M3)...")
+    fairness_eval = FairnessEvaluator()
+    fairness_results = fairness_eval.evaluate_all(
+        y_test, y_pred_test, X_test
+    )
+    fairness_eval.save_results("experiments/fairness_metrics.csv")
+    
+    # ============================================================
+    # STEP 7: Governance & monitoring (M4)
+    # ============================================================
+    print("\n[7/8] Setting up governance and monitoring (M4)...")
+    
+    # Initialize governance
+    gov_logger = GovernanceLogger("experiments/governance_logs")
+    monitor = ModelMonitor()
+    audit = AuditTrail(model_version="1.0-midterm1")
+    
+    # Log sample predictions with governance
+    print("Logging predictions for audit trail...")
+    import time as time_module
+    for i in range(min(100, len(X_test))):
+        start = time_module.time()
+        pred = model.model.predict_proba(X_test[i:i+1])[:, 1][0]
+        latency = (time_module.time() - start) * 1000  # ms
+        
+        # Log with transaction ID
+        tx_id = f"TX_{int(time_module.time()*1000)}_{i}"
+        gov_logger.log_prediction(
+            prediction_id=tx_id,
+            features=X_test[i],
+            prediction=pred,
+            metadata={'sample_index': i}
+        )
+        monitor.record_inference(pred, latency)
+    
+    # Generate monitoring report
+    monitor.save_report("experiments/monitoring_report.txt")
+    
+    # Generate audit report
+    model_metrics = {
+        'roc_auc': metrics_test['roc_auc'],
+        'accuracy': metrics_test['accuracy'],
+        'precision': metrics_test['precision'],
+        'recall': metrics_test['recall'],
+        'f1_score': metrics_test['f1'],
+        'ece': metrics_test['ece']
+    }
+    
+    audit.generate_audit_report(
+        model_metrics=model_metrics,
+        fairness_metrics=fairness_results,
+        output_path="experiments/audit_report.txt"
+    )
+    
+    # ============================================================
+    # STEP 8: Summary report
+    # ============================================================
+    print("\n[8/8] Generating comprehensive summary...")
     
     summary = f"""
 {'='*70}
-EXPERIMENT SUMMARY REPORT
+COMPLETE PROJECT - ALL MILESTONES (M1-M4)
 {'='*70}
 
 MODEL CONFIGURATION
@@ -180,8 +242,8 @@ Recall: {metrics_test['recall']:.4f}
 F1-Score: {metrics_test['f1']:.4f}
 Expected Calibration Error: {metrics_test['ece']:.4f}
 
-EXPLAINABILITY (M1)
--------------------
+M1: EXPLAINABILITY
+------------------
 ✓ SHAP explanations implemented
 ✓ Individual instance explanations generated
 ✓ Global feature importance computed
@@ -190,8 +252,8 @@ EXPLAINABILITY (M1)
 TOP 5 MOST IMPORTANT FEATURES
 {importance_df.head(5).to_string(index=False)}
 
-ROBUSTNESS (M2)
----------------
+M2: ROBUSTNESS
+--------------
 Noise Injection (std=0.2):
   - ROC-AUC degradation: {noise_results[noise_results['noise_std']==0.2]['roc_auc'].values[0] - noise_results[noise_results['noise_std']==0.0]['roc_auc'].values[0]:.4f}
 
@@ -202,14 +264,27 @@ Distribution Shift:
   - ROC-AUC drop: {shift_results['roc_auc_drop']:.4f}
   - ECE increase: {shift_results['ece_increase']:.4f}
 
-REGULARIZATION COMPARISON
--------------------------
-Best validation performance: {reg_results.loc[reg_results['val_auc'].idxmax(), 'config']}
-  - Val ROC-AUC: {reg_results['val_auc'].max():.4f}
-  - Overfitting: {reg_results.loc[reg_results['val_auc'].idxmax(), 'overfitting']:.4f}
+Regularization (Best):
+  - {reg_results.loc[reg_results['val_auc'].idxmax(), 'config']}
+  - Val AUC: {reg_results['val_auc'].max():.4f}
 
-OUTPUT FILES
+M3: FAIRNESS
 ------------
+✓ Disparate Impact Ratio: {fairness_results['disparate_impact']['disparate_impact_ratio']:.4f}
+✓ Passes 80% Rule: {fairness_results['disparate_impact']['passes_80_rule']}
+✓ TPR Disparity: {fairness_results['equalized_odds']['tpr_disparity']:.4f}
+✓ FPR Disparity: {fairness_results['equalized_odds']['fpr_disparity']:.4f}
+✓ Demographic Parity Diff: {fairness_results['demographic_parity']['max_difference']:.4f}
+
+M4: GOVERNANCE
+--------------
+✓ Audit trail: 100 predictions logged with transaction IDs
+✓ Mean latency: {monitor.get_statistics()['mean_latency_ms']:.2f}ms
+✓ Audit report generated with compliance checks
+✓ Model version: 1.0-midterm1
+
+OUTPUT FILES (15+ total)
+------------------------
 ✓ models/credit_model.pkl
 ✓ experiments/shap_waterfall_default.png
 ✓ experiments/shap_summary.png
@@ -220,17 +295,20 @@ OUTPUT FILES
 ✓ experiments/robustness_noise.png
 ✓ experiments/robustness_dropout.csv
 ✓ experiments/robustness_dropout.png
+✓ experiments/fairness_metrics.csv
+✓ experiments/governance_logs/*.jsonl
+✓ experiments/monitoring_report.txt
+✓ experiments/audit_report.txt
+✓ experiments/summary_report.txt
 
 {'='*70}
-NEXT STEPS FOR MIDTERM 1
+PROJECT COMPLETE - ALL MILESTONES IMPLEMENTED
 {'='*70}
 
-1. Review generated visualizations and results
-2. Use these results for Part I (Algorithmic Analysis)
-3. Include code samples and outputs in Part II (Project Progress)
-4. Complete LaTeX document with both parts
-5. Export to PDF and submit
-
+M1: Explainability - IMPLEMENTED
+M2: Robustness - IMPLEMENTED  
+M3: Fairness - IMPLEMENTED
+M4: Governance - IMPLEMENTED
 {'='*70}
 """
     

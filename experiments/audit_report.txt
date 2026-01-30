@@ -1,0 +1,39 @@
+======================================================================
+MODEL AUDIT REPORT
+======================================================================
+
+Report Generated: 2026-01-29 18:26:13
+Model Version: 1.0-midterm1
+
+----------------------------------------------------------------------
+1. MODEL PERFORMANCE METRICS
+----------------------------------------------------------------------
+  roc_auc: 0.6525
+  accuracy: 0.7553
+  precision: 0.1577
+  recall: 0.4516
+  f1_score: 0.2338
+  ece: 0.3127
+
+----------------------------------------------------------------------
+2. FAIRNESS ASSESSMENT
+----------------------------------------------------------------------
+  Disparate Impact Ratio: 0.8847
+  Passes 80% Rule: True
+  TPR Disparity: 0.2025
+  FPR Disparity: 0.0074
+
+----------------------------------------------------------------------
+3. COMPLIANCE STATUS
+----------------------------------------------------------------------
+  [PASS] Model Performance: AUC > 0.65
+  [PASS] Fairness - Disparate Impact: Within 80% rule
+  [WARNING] Fairness - Equalized Odds: Disparity = 0.202
+
+----------------------------------------------------------------------
+4. RECOMMENDATIONS
+----------------------------------------------------------------------
+  • Monitor for data drift on a weekly basis
+  • Retrain model if AUC drops below 0.70
+  • Review fairness metrics monthly
+  • Update protected group analysis with actual demographic data

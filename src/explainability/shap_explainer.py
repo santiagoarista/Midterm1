@@ -4,6 +4,8 @@ SHAP-based explainability for credit risk models (M1 - XAI Feature).
 
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import shap
 from typing import Optional, Dict, Any
@@ -114,7 +116,7 @@ class SHAPExplainer:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             print(f"Waterfall plot saved to {save_path}")
         
-        plt.show()
+        plt.close()  # Close instead of show
         
         return explanation
     
@@ -142,7 +144,7 @@ class SHAPExplainer:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             print(f"Summary plot saved to {save_path}")
         
-        plt.show()
+        plt.close()  # Close instead of show
     
     def get_global_importance(self, X: np.ndarray) -> pd.DataFrame:
         """Calculate global feature importance using mean absolute SHAP values."""

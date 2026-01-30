@@ -11,8 +11,15 @@ from sklearn.metrics import (
     recall_score, f1_score, confusion_matrix, classification_report
 )
 from sklearn.calibration import calibration_curve
-import lightgbm as lgb
 import pickle
+
+# Try to import LightGBM, but make it optional
+try:
+    import lightgbm as lgb
+    LIGHTGBM_AVAILABLE = True
+except (ImportError, OSError) as e:
+    LIGHTGBM_AVAILABLE = False
+    print(f"Warning: LightGBM not available ({e}). Using logistic regression only.")
 
 
 class CreditRiskModel:
@@ -36,6 +43,11 @@ class CreditRiskModel:
                 class_weight='balanced'
             )
         elif self.model_type == "lightgbm":
+            if not LIGHTGBM_AVAILABLE:
+                print("Warning: LightGBM not available. Falling back to logistic regression.")
+                self.model_type = "logistic"
+                return self.build_model(regularization, C)
+            
             self.model = lgb.LGBMClassifier(
                 n_estimators=100,
                 max_depth=6,
