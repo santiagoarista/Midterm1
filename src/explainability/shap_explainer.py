@@ -1,5 +1,8 @@
 """
 SHAP-based explainability for credit risk models (M1 - XAI Feature).
+
+Primary contributor: José Leobardo Navarro Márquez
+Additional work by: Santiago Arista Viramontes
 """
 
 import numpy as np
@@ -182,6 +185,121 @@ class SHAPExplainer:
             text += f"{i}. {feature} = {feature_val:.2f} {impact} risk by {abs(shap_val):.3f}\n"
         
         return text
+    
+    def analyze_pathological_cases(self, X: np.ndarray, y_true: np.ndarray, 
+                                   save_path: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Identify and analyze pathological cases where SHAP explanations may be misleading.
+        
+        This demonstrates the LIMITS of SHAP explanations including:
+        1. High-confidence misclassifications (model is wrong but SHAP explains why)
+        2. Feature interactions that SHAP attributes individually  
+        3. Prediction instability with similar explanations
+        
+        Returns dict with pathological case analyses showing XAI limitations.
+        """
+        print("\n" + "="*70)
+        print("PATHOLOGICAL CASE ANALYSIS - Demonstrating SHAP Limitations")
+        print("="*70)
+        
+        y_pred = self.model.model.predict_proba(X)[:, 1]
+        y_pred_class = (y_pred > 0.5).astype(int)
+        
+        pathological_cases = {
+            'high_confidence_errors': [],
+            'explanation_instability': [],
+            'summary': {}
+        }
+        
+        # 1. Find high-confidence misclassifications
+        print("\n1. HIGH-CONFIDENCE ERRORS (Model confident but wrong)")
+        print("   Limitation: SHAP explains the model's reasoning, NOT ground truth")
+        print("-" * 70)
+        
+        errors = np.where(y_pred_class != y_true)[0]
+        high_conf_errors = [(idx, abs(y_pred[idx] - 0.5)) for idx in errors]
+        high_conf_errors.sort(key=lambda x: x[1], reverse=True)
+        
+        for rank, (idx, confidence) in enumerate(high_conf_errors[:3], 1):
+            explanation = self.explain_instance(X, idx)
+            pathological_cases['high_confidence_errors'].append({
+                'index': int(idx),
+                'predicted': float(y_pred[idx]),
+                'actual': int(y_true[idx]),
+                'confidence': float(confidence),
+                'top_features': [(f, float(s)) for f, s, _ in explanation['top_features'][:5]]
+            })
+            
+            print(f"\n   Case {rank}: Index={idx}")
+            print(f"   Predicted: {y_pred[idx]:.3f} | Actual: {y_true[idx]}")
+            print(f"   → SHAP explains WHY the model made this WRONG prediction")
+            print(f"   Top factors: {explanation['top_features'][0][0]} (SHAP={explanation['top_features'][0][1]:.3f})")
+        
+        # 2. Explanation instability - similar predictions, different explanations
+        print("\n\n2. EXPLANATION INSTABILITY")
+        print("   Limitation: Similar predictions may have different SHAP attributions")
+        print("-" * 70)
+        
+        # Find pairs of instances with similar predictions
+        pred_range = (0.4, 0.6)  # Near decision boundary
+        boundary_indices = np.where((y_pred > pred_range[0]) & (y_pred < pred_range[1]))[0]
+        
+        if len(boundary_indices) >= 2:
+            idx1, idx2 = boundary_indices[0], boundary_indices[1]
+            exp1 = self.explain_instance(X, idx1)
+            exp2 = self.explain_instance(X, idx2)
+            
+            # Calculate explanation similarity (cosine of SHAP vectors)
+            shap1 = exp1['shap_values']
+            shap2 = exp2['shap_values']
+            explanation_similarity = np.dot(shap1, shap2) / (np.linalg.norm(shap1) * np.linalg.norm(shap2))
+            
+            pathological_cases['explanation_instability'] = {
+                'idx1': int(idx1),
+                'idx2': int(idx2),
+                'pred1': float(y_pred[idx1]),
+                'pred2': float(y_pred[idx2]),
+                'prediction_diff': float(abs(y_pred[idx1] - y_pred[idx2])),
+                'explanation_similarity': float(explanation_similarity),
+                'top_feature_1': exp1['top_features'][0][0],
+                'top_feature_2': exp2['top_features'][0][0]
+            }
+            
+            print(f"   Instance {idx1}: Prediction={y_pred[idx1]:.3f}, Top Feature={exp1['top_features'][0][0]}")
+            print(f"   Instance {idx2}: Prediction={y_pred[idx2]:.3f}, Top Feature={exp2['top_features'][0][0]}")
+            print(f"   → Prediction Difference: {abs(y_pred[idx1] - y_pred[idx2]):.4f}")
+            print(f"   → Explanation Similarity: {explanation_similarity:.4f}")
+            print(f"   → Shows that similar predictions can have different explanations")
+        
+        # 3. Summary statistics
+        print("\n\n3. SHAP EXPLANATION LIMITATIONS SUMMARY")
+        print("-" * 70)
+        
+        error_rate = len(errors) / len(y_true)
+        pathological_cases['summary'] = {
+            'total_errors': int(len(errors)),
+            'error_rate': float(error_rate),
+            'high_confidence_error_count': len(pathological_cases['high_confidence_errors']),
+            'caveat': 'SHAP explains model predictions, not ground truth. '
+                     'Even wrong predictions get plausible explanations.'
+        }
+        
+        print(f"   Total Errors: {len(errors)} ({error_rate:.1%})")
+        print(f"   High-Confidence Errors: {len(pathological_cases['high_confidence_errors'])}")
+        print(f"\n CRITICAL CAVEAT:")
+        print(f"   SHAP values explain WHY the model made a prediction,")
+        print(f"   NOT whether the prediction is correct.")
+        print(f"   Wrong predictions still get coherent SHAP explanations!")
+        
+        # Save if requested
+        if save_path:
+            import json
+            with open(save_path, 'w') as f:
+                json.dump(pathological_cases, f, indent=2)
+            print(f"\n   Pathological case analysis saved to {save_path}")
+        
+        print("="*70)
+        return pathological_cases
 
 
 if __name__ == "__main__":

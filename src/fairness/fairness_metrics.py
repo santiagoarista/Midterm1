@@ -1,6 +1,9 @@
 """
 Fairness metrics for credit risk model.
 Implements disparate impact, equalized odds, and demographic parity.
+
+Primary contributor: José Leobardo Navarro Márquez
+Additional work by: Santiago Arista Viramontes
 """
 
 import numpy as np
@@ -14,16 +17,59 @@ class FairnessEvaluator:
     
     def __init__(self):
         self.results = {}
+        self.synthetic_groups_warning_shown = False
         
     def create_synthetic_groups(self, X: np.ndarray, n_groups: int = 2) -> np.ndarray:
         """
         Create synthetic protected groups for demonstration.
-        In production, use actual demographic data.
+        
+        CRITICAL CAVEAT - SYNTHETIC GROUPS LIMITATION:
+        
+        These groups are generated via K-means clustering on features,
+        NOT real demographic data. This is for DEMONSTRATION ONLY.
+        
+        LIMITATIONS:
+        1. Synthetic groups may not reflect actual protected attributes
+        2. Feature-based clustering can create spurious demographic proxies
+        3. Fairness metrics on synthetic groups are ILLUSTRATIVE, not regulatory-compliant
+        4. Real deployment requires actual demographic data (age, gender, race, etc.)
+        
+        REGULATORY NOTE:
+        For production credit scoring systems, you MUST:
+        - Use actual protected attributes where legally permitted
+        - Document data collection and usage
+        - Comply with ECOA, FCRA, and other fair lending regulations
+        - Consider proxy discrimination even without explicit demographic data
+        
+        In production, use actual demographic data with proper consent and compliance.
         """
+        if not self.synthetic_groups_warning_shown:
+            print("\n" + "="*70)
+            print(" SYNTHETIC PROTECTED GROUPS - IMPORTANT CAVEAT")
+            print("="*70)
+            print("These groups are K-means clusters on features, NOT real demographics.")
+            print("\nLIMITATIONS:")
+            print("  • Not actual protected attributes (age, gender, race, etc.)")
+            print("  • Results are ILLUSTRATIVE ONLY, not regulatory-compliant")
+            print("  • Feature clustering may create spurious demographic proxies")
+            print("\nREAL DEPLOYMENT REQUIREMENTS:")
+            print("  • Use actual demographic data where legally permitted")
+            print("  • Comply with ECOA, FCRA, fair lending regulations")
+            print("  • Document data collection, usage, and fairness audits")
+            print("  • Consider proxy discrimination risks")
+            print("\nThis implementation demonstrates fairness analysis methodology,")
+            print("but production systems need real protected attribute data.")
+            print("="*70 + "\n")
+            self.synthetic_groups_warning_shown = True
+        
         # Use clustering on features to create synthetic groups
         from sklearn.cluster import KMeans
         kmeans = KMeans(n_clusters=n_groups, random_state=42)
         groups = kmeans.fit_predict(X[:, :5])  # Use first 5 features
+        
+        print(f"Created {n_groups} synthetic groups via K-means clustering")
+        print(f"Group distribution: {np.bincount(groups)}")
+        
         return groups
     
     def disparate_impact(self, y_pred: np.ndarray, groups: np.ndarray, 

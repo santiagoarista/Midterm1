@@ -1,5 +1,12 @@
 """
 Training script for credit risk model with SHAP explanations.
+
+END-TO-END XAI PIPELINE: This script implements a complete XAI system from
+data loading through model training, post-hoc explanations, robustness testing,
+fairness evaluation, and governance.
+
+Team: Santiago Arista Viramontes, Diego Vergara Hernández, José Leobardo Navarro Márquez
+Integration and orchestration by: Santiago Arista Viramontes
 """
 
 import sys
@@ -12,22 +19,42 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from src.data.data_loader import CreditDataLoader
 from src.models.credit_model import CreditRiskModel
+from src.models.baseline_benchmarks import BaselineBenchmarks
 from src.explainability.shap_explainer import SHAPExplainer
-from src.robustness.robustness_tests import RobustnessEvaluator, RegularizationExperiments
+from src.robustness.robustness_tests import (
+    RobustnessEvaluator, RegularizationExperiments, ExplanationStabilityEvaluator
+)
 from src.fairness.fairness_metrics import FairnessEvaluator
 from src.governance.monitoring import GovernanceLogger, ModelMonitor, AuditTrail
+from src.utils.reproducibility import create_experiment_config
 
 
 def main():
-    """Main training pipeline."""
+    """Main training pipeline implementing end-to-end XAI system."""
     print("="*70)
-    print("Credit Risk Training Pipeline")
+    print("CREDIT RISK XAI PIPELINE - END-TO-END EXPLAINABLE AI SYSTEM")
     print("="*70)
     
-    # Configuration
-    SAMPLE_SIZE = 10000  # Use subset for faster training
-    MODEL_TYPE = "lightgbm"  # or "logistic"
-    RANDOM_STATE = 42
+    # ============================================================
+    # STEP 0: Reproducibility Setup
+    # ============================================================
+    print("\n[0/9] Setting up reproducibility guarantees...")
+    
+    config = create_experiment_config(
+        sample_size=10000,
+        model_type="lightgbm",
+        random_state=42,
+        regularization='l2',
+        C=1.0
+    )
+    
+    config.print_reproducibility_info()
+    config.save_config("experiments")
+    
+    # Extract config values
+    SAMPLE_SIZE = config.config['sample_size']
+    MODEL_TYPE = config.config['model_type']
+    RANDOM_STATE = config.config['random_state']
     
     # Create experiments directory
     Path("experiments").mkdir(exist_ok=True)
@@ -36,7 +63,7 @@ def main():
     # ============================================================
     # STEP 1: Load and prepare data
     # ============================================================
-    print("\n[1/6] Loading and preprocessing data...")
+    print("\n[1/9] Loading and preprocessing data...")
     loader = CreditDataLoader()
     X, y, feature_names = loader.load_and_prepare(sample_size=SAMPLE_SIZE)
     
@@ -53,9 +80,18 @@ def main():
     print(f"Test set: {X_test.shape[0]} samples")
     
     # ============================================================
-    # STEP 2: Train baseline model
+    # STEP 2: Baseline Benchmarks (From Class)
     # ============================================================
-    print(f"\n[2/6] Training {MODEL_TYPE} model...")
+    print("\n[2/9] Training baseline benchmarks for comparison...")
+    
+    benchmarks = BaselineBenchmarks(random_state=RANDOM_STATE)
+    baseline_results = benchmarks.train_all_baselines(X_train, y_train, X_test, y_test)
+    baseline_results.to_csv("experiments/baseline_benchmarks.csv", index=False)
+    
+    # ============================================================
+    # STEP 3: Train sophisticated model
+    # ============================================================
+    print(f"\n[3/9] Training sophisticated {MODEL_TYPE} model...")
     model = CreditRiskModel(model_type=MODEL_TYPE, random_state=RANDOM_STATE)
     model.build_model(regularization='l2', C=1.0)
     model.train(X_train, y_train, feature_names)
@@ -70,6 +106,9 @@ def main():
     print("\n--- Test Set Performance ---")
     metrics_test = model.print_evaluation(X_test, y_test, "Test Set")
     
+    # Compare with baselines
+    improvements = benchmarks.compare_with_model(model, X_test, y_test, baseline_results)
+    
     # Get predictions for fairness evaluation
     y_pred_test = model.model.predict_proba(X_test)[:, 1]
     
@@ -77,9 +116,9 @@ def main():
     model.save("models/credit_model.pkl")
     
     # ============================================================
-    # STEP 3: Generate SHAP explanations (M1)
+    # STEP 4: Generate SHAP explanations (M1)
     # ============================================================
-    print("\n[3/6] Generating SHAP explanations (M1 - XAI Feature)...")
+    print("\n[4/9] Generating SHAP explanations (M1 - XAI Feature)...")
     explainer = SHAPExplainer(model, X_train[:500], feature_names)
     
     # Explain individual predictions
@@ -109,10 +148,17 @@ def main():
     print(importance_df.head(10).to_string(index=False))
     importance_df.to_csv("experiments/feature_importance.csv", index=False)
     
+    # PATHOLOGICAL CASE ANALYSIS - Demonstrating SHAP Limits
+    print("\n--- Pathological Case Analysis (Demonstrating XAI Limits) ---")
+    pathological_cases = explainer.analyze_pathological_cases(
+        X_test[:500], y_test[:500],
+        save_path="experiments/pathological_cases.json"
+    )
+    
     # ============================================================
-    # STEP 4: Regularization experiments (M2)
+    # STEP 5: Regularization experiments (M2)
     # ============================================================
-    print("\n[4/6] Running regularization experiments (M2)...")
+    print("\n[5/9] Running regularization experiments (M2)...")
     reg_experiments = RegularizationExperiments(
         X_train, y_train, X_val, y_val, feature_names
     )
@@ -160,9 +206,9 @@ def main():
     shift_results = robustness_eval.test_distribution_shift(shift_magnitude=0.5)
     
     # ============================================================
-    # STEP 6: Fairness evaluation (M3)
+    # STEP 7: Fairness evaluation (M3)
     # ============================================================
-    print("\n[6/8] Evaluating fairness metrics (M3)...")
+    print("\n[7/9] Evaluating fairness metrics (M3)...")
     fairness_eval = FairnessEvaluator()
     fairness_results = fairness_eval.evaluate_all(
         y_test, y_pred_test, X_test
@@ -170,9 +216,9 @@ def main():
     fairness_eval.save_results("experiments/fairness_metrics.csv")
     
     # ============================================================
-    # STEP 7: Governance & monitoring (M4)
+    # STEP 8: Governance & monitoring (M4)
     # ============================================================
-    print("\n[7/8] Setting up governance and monitoring (M4)...")
+    print("\n[8/9] Setting up governance and monitoring (M4)...")
     
     # Initialize governance
     gov_logger = GovernanceLogger("experiments/governance_logs")
@@ -217,9 +263,9 @@ def main():
     )
     
     # ============================================================
-    # STEP 8: Summary report
+    # STEP 9: Summary report
     # ============================================================
-    print("\n[8/8] Generating comprehensive summary...")
+    print("\n[9/9] Generating comprehensive summary...")
     
     summary = f"""
 {'='*70}

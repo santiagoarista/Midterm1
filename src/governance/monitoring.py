@@ -1,5 +1,8 @@
 """
 Governance framework for model monitoring and audit trails.
+
+Primary contributor: Santiago Arista Viramontes
+Additional work by: José Leobardo Navarro Márquez
 """
 
 import json

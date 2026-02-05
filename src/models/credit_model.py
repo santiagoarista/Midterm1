@@ -1,5 +1,8 @@
 """
 Credit risk prediction models with calibration support.
+
+Primary contributor: Santiago Arista Viramontes
+Additional work by: Diego Vergara Hernández
 """
 
 import numpy as np

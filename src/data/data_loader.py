@@ -1,5 +1,8 @@
 """
 Data loading and preprocessing module for Home Credit Default Risk dataset.
+
+Primary contributor: Diego Vergara Hernández
+Additional work by: Santiago Arista Viramontes
 """
 
 import pandas as pd

@@ -1,0 +1,15 @@
+{
+  "config": {
+    "sample_size": 10000,
+    "model_type": "lightgbm",
+    "random_state": 42,
+    "regularization": "l2",
+    "C": 1.0,
+    "test_size": 0.3,
+    "val_split": 0.5,
+    "stratify": true
+  },
+  "config_hash": "ee2adfcaf1b0d84a",
+  "timestamp": "2026-02-05T00:23:33.472417",
+  "reproducibility_note": "This hash uniquely identifies the experiment configuration. Running with the same config hash guarantees identical results due to fixed random seeds and deterministic operations."
+}

@@ -2,7 +2,7 @@
 MODEL MONITORING REPORT
 ======================================================================
 
-Generated: 2026-01-29 18:26:13
+Generated: 2026-02-05 00:23:39
 
 Prediction Statistics:
   Total Predictions: 100
@@ -10,10 +10,10 @@ Prediction Statistics:
   Prediction Std Dev: 0.1799
 
 Latency Statistics:
-  Mean Latency: 0.51 ms
-  P95 Latency: 1.02 ms
-  P99 Latency: 1.17 ms
-  Max Latency: 1.24 ms
+  Mean Latency: 0.36 ms
+  P95 Latency: 0.59 ms
+  P99 Latency: 0.73 ms
+  Max Latency: 0.96 ms
 
 Performance Status:
   ✓ Mean latency under 100ms target

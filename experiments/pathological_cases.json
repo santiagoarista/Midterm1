@@ -1,0 +1,104 @@
+{
+  "high_confidence_errors": [
+    {
+      "index": 300,
+      "predicted": 0.04204816618920265,
+      "actual": 1,
+      "confidence": 0.45795183381079735,
+      "top_features": [
+        [
+          "YEARS_BEGINEXPLUATATION_AVG",
+          -1.2041105340480316
+        ],
+        [
+          "EXT_SOURCE_2",
+          -0.49075961806059787
+        ],
+        [
+          "TOTALAREA_MODE",
+          -0.2622989923575104
+        ],
+        [
+          "YEARS_BEGINEXPLUATATION_MEDI",
+          -0.2484427988968861
+        ],
+        [
+          "DAYS_EMPLOYED",
+          0.21046153292658493
+        ]
+      ]
+    },
+    {
+      "index": 154,
+      "predicted": 0.07072082844952825,
+      "actual": 1,
+      "confidence": 0.42927917155047174,
+      "top_features": [
+        [
+          "EXT_SOURCE_3",
+          -0.9415563884419584
+        ],
+        [
+          "EXT_SOURCE_2",
+          0.7193431292818667
+        ],
+        [
+          "DAYS_EMPLOYED",
+          -0.716336942507848
+        ],
+        [
+          "AMT_INCOME_TOTAL",
+          -0.48169078206864613
+        ],
+        [
+          "AMT_CREDIT",
+          -0.4073327799772872
+        ]
+      ]
+    },
+    {
+      "index": 284,
+      "predicted": 0.08590216468827662,
+      "actual": 1,
+      "confidence": 0.4140978353117234,
+      "top_features": [
+        [
+          "AMT_ANNUITY",
+          -0.6078925506730569
+        ],
+        [
+          "EXT_SOURCE_2",
+          -0.45897627176610445
+        ],
+        [
+          "AMT_INCOME_TOTAL",
+          -0.40852436896040406
+        ],
+        [
+          "AMT_CREDIT",
+          -0.33254079015339655
+        ],
+        [
+          "EXT_SOURCE_3",
+          0.3010666083935258
+        ]
+      ]
+    }
+  ],
+  "explanation_instability": {
+    "idx1": 3,
+    "idx2": 6,
+    "pred1": 0.47286764646136714,
+    "pred2": 0.5508207258412171,
+    "prediction_diff": 0.07795307937984997,
+    "explanation_similarity": 0.4436791350643692,
+    "top_feature_1": "EXT_SOURCE_3",
+    "top_feature_2": "EXT_SOURCE_2"
+  },
+  "summary": {
+    "total_errors": 128,
+    "error_rate": 0.256,
+    "high_confidence_error_count": 3,
+    "caveat": "SHAP explains model predictions, not ground truth. Even wrong predictions get plausible explanations."
+  }
+}
